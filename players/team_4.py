@@ -185,6 +185,7 @@ class Player:
 
         self.tsp()
         self.queue_path()
+        self.in_endgame = False
 
     # initialize queue with stalls to visit from tsp in order
     def queue_path(self):
@@ -240,8 +241,12 @@ class Player:
     # simulator calls this function when the player encounters an obstacle
     # Maybe if edited and we're given the obstacle id we can add it to our database
     def encounter_obstacle(self):
+        if self.in_endgame:
+            self.collision_counter = 20
+        else:
+            self.collision_counter = 9
+        
         self.action = 'lookup'
-        self.collision_counter = 9
         self.vx = random.random()
         self.vy = math.sqrt(1 - self.vx ** 2)
         self.sign_x *= -1
@@ -373,6 +378,7 @@ class Player:
                 self.sign_x = 1
         else:
             # post game strategy -> find a place to hide and accumulate phone points
+            self.in_endgame = True
             return self.endgame()
 
         if reroute:
