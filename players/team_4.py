@@ -35,6 +35,12 @@ class Location:
         new_x_pos = self.x + dx
         new_y_pos = self.y + dy
 
+        if new_y_pos > 99 or new_y_pos < 1:
+            return None
+
+        if new_x_pos > 99 or new_x_pos < 1:
+            return None
+
         # TODO: expand to account for players as well and their expected trajectories if known to us
         if self.player.obstacles and len(self.player.obstacles) > 0:
             for key in self.player.obstacles.keys():
@@ -243,22 +249,23 @@ class Player:
 
     def A_star_obstacle_search(self):
         frontier = queue.PriorityQueue()
-        initial_location = Location(self.pos_x, self.pos_y, self.paths[0].x, self.paths[0].y, None, 0, self)
-        frontier.put(initial_location)
+        if self.paths and len(self.paths) > 0:
+            initial_location = Location(self.pos_x, self.pos_y, self.paths[0].x, self.paths[0].y, None, 0, self)
+            frontier.put(initial_location)
 
-        explored = set()
+            explored = set()
 
-        while frontier.qsize() > 0:
-            state = frontier.get()
+            while frontier.qsize() > 0:
+                state = frontier.get()
 
-            if (state.x, state.y) not in explored:
-                explored.add((state.x, state.y))
-                # return path once hit target
-                if state.distance_travelled >= 10 or self.hit_goal(state):
-                    return self.get_path_to_goal(state)
-                for child_location in state.expand():
-                    if (child_location.x, child_location.y) not in explored:
-                        frontier.put(child_location)
+                if (state.x, state.y) not in explored:
+                    explored.add((state.x, state.y))
+                    # return path once hit target
+                    if state.distance_travelled >= 10 or self.hit_goal(state):
+                        return self.get_path_to_goal(state)
+                    for child_location in state.expand():
+                        if (child_location.x, child_location.y) not in explored:
+                            frontier.put(child_location)
 
         return None
 
@@ -368,8 +375,13 @@ class Player:
             # post game strategy -> find a place to hide and accumulate phone points
             return self.endgame()
 
-        new_pos_x = self.pos_x + self.sign_x * self.vx
-        new_pos_y = self.pos_y + self.sign_y * self.vy
+        if reroute:
+            new_pos_x = self.reroute[0][0]
+            new_pos_y = self.reroute[0][1]
+            self.reroute = self.reroute[1:]
+        else:
+            new_pos_x = self.pos_x + self.sign_x * self.vx
+            new_pos_y = self.pos_y + self.sign_y * self.vy
 
         return new_pos_x, new_pos_y
 
