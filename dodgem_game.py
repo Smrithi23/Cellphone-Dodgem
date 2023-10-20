@@ -114,14 +114,14 @@ class DodgemGame():
         with open(self.tsp_log, 'w') as f:
             f.write("Travelling Salesman Path\n")
 
-        with open(self.game_config_log, 'w') as f:
-            f.write("\nGame Configuration\n")
-            f.write("Total Number of Stalls: " + str(self.no_of_stalls) + "\n\
-Number of Stalls to Visit: " + str(self.no_to_visit) + "\n\
-Number of Obstacles: " + str(self.no_of_stalls - self.no_to_visit) + "\n\
-Players: " + str(args.players) + "\n\
-Theta: " + str(self.theta) + "\n\
-Total Time: " + str(self.T) + "\n\n")
+#         with open(self.game_config_log, 'w') as f:
+#             f.write("\nGame Configuration\n")
+#             f.write("Total Number of Stalls: " + str(self.no_of_stalls) + "\n\
+# Number of Stalls to Visit: " + str(self.no_to_visit) + "\n\
+# Number of Obstacles: " + str(self.no_of_stalls - self.no_to_visit) + "\n\
+# Players: " + str(args.players) + "\n\
+# Theta: " + str(self.theta) + "\n\
+# Total Time: " + str(self.T) + "\n\n")
 
         self.turn_no = 1
         self.turn_comp = None
@@ -145,6 +145,15 @@ Total Time: " + str(self.T) + "\n\n")
 
         if int(args.total_time) > 0:
             self.T = int(args.total_time)
+
+        with open(self.game_config_log, 'w') as f:
+            f.write("\nGame Configuration\n")
+            f.write("Total Number of Stalls: " + str(self.no_of_stalls) + "\n\
+Number of Stalls to Visit: " + str(self.no_to_visit) + "\n\
+Number of Obstacles: " + str(self.no_of_stalls - self.no_to_visit) + "\n\
+Players: " + str(args.players) + "\n\
+Theta: " + str(self.theta) + "\n\
+Total Time: " + str(self.T) + "\n\n")
 
         self._create_players(args.players)
         if self.gui:
@@ -838,8 +847,7 @@ Total Time: " + str(self.T) + "\n\n")
                         f.write(str(index + 1).ljust(int(1.2 * self.canvas_scale), " ") + str(player_state.name).ljust(int(1 * self.canvas_scale), " ") + (str(player_state.items_obtained) + "/" + str(len(self.stalls_to_visit))).ljust(
                             int(1.2 * self.canvas_scale), " ") + str(player_state.interaction).ljust(int(1.5 * self.canvas_scale), " ") + str(round(player_state.satisfaction, 2)).ljust(int(1.5 * self.canvas_scale), " ") + "\n")
                 sys.stdout = sys.__stdout__
-                if self.turn_no % 100 == 0:
-                    print(self.turn_no, end=" ")
+                print(self.turn_no, end=" ", flush=True)
                 self.turn_no += 1
         else:
             if self.iteration == self.T:
