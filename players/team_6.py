@@ -3,7 +3,7 @@ from queue import Queue
 from queue import PriorityQueue
 from sys import maxsize as INT_MAX
 
-random.seed(2023)
+# random.seed(2023)
 
 HORIZON = 10 # how far we can look
 DANGER_ZONE = 0.5 # how close we can get to an obstacle/person
@@ -143,6 +143,7 @@ class Player:
 
         self.dir = self.pos.normalized_dir(self.__next_stall()) # unit vector representing direction of movement
         self.phase1done = False 
+        self.just_finished = False
     
     def __randunit(self):
         """A random unit vector."""
@@ -199,7 +200,7 @@ class Player:
                 if newvec.x>0 and newvec.x<WALL_BOUNDARY and \
                     newvec.y>0 and newvec.y<WALL_BOUNDARY and \
                     all(newvec.dist2(obstacle) > DANGER_ZONE+1.75 for obstacle in self.obstacles_known) and \
-                    all(newvec.dist2(player) > (DANGER_ZONE if fruitful else 2*DANGER_ZONE+2) for player in self.players_cached):
+                    all(newvec.dist2(player) > (DANGER_ZONE if fruitful else 2*DANGER_ZONE+2.5) for player in self.players_cached):
                     newvecs.append(newvec)
             return newvecs
         
@@ -292,6 +293,29 @@ class Player:
         self.t_since_lkp += 1
 
         if len(self.stalls_next) == 0:
+            if not self.just_finished:
+                self.just_finished = True
+                if pos_x < 50 and pos_y < 50:
+                    if pos_x < pos_y:
+                        self.stalls_next.append(Vector(1, pos_y))
+                    else:
+                        self.stalls_next.append(Vector(pos_x, 1))
+                elif pos_x < 50 and pos_y > 50:
+                    if pos_x < (100 - pos_y):
+                        self.stalls_next.append(Vector(1, pos_y))
+                    else:
+                        self.stalls_next.append(Vector(pos_x, 99))
+                elif pos_x > 50 and pos_y < 50:
+                    if (100 - pos_x) < pos_y:
+                        self.stalls_next.append(Vector(99, pos_y))
+                    else:
+                        self.stalls_next.append(Vector(pos_x, 1))
+                else:
+                    if (100 - pos_x) < (100 - pos_y):
+                        self.stalls_next.append(Vector(99, pos_y))
+                    else:
+                        self.stalls_next.append(Vector(pos_x, 99))
+                # self.stalls_next.append(Vector(1,1))
             self.dir = Vector(0,0)
             return 'move'
             # if self.phase1done:
@@ -313,7 +337,7 @@ class Player:
 
         if self.should_lookup \
             or self.pos.dist2(self.pos_last_lkp) >= (HORIZON-2* DANGER_ZONE)/2 \
-            or any(self.pos.dist2(player) <= 2*(DANGER_ZONE+2) + self.t_since_lkp for player in self.players_cached):
+            or any(self.pos.dist2(player) <= 2*(DANGER_ZONE+2.5) + self.t_since_lkp for player in self.players_cached):
             self.pos_last_lkp.update_val(self.pos)
             return 'lookup move'
         
