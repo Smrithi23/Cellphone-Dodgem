@@ -3,7 +3,7 @@ from queue import Queue
 from queue import PriorityQueue
 from sys import maxsize as INT_MAX
 
-random.seed(2023)
+# random.seed(2023)
 
 HORIZON = 10 # how far we can look
 DANGER_ZONE = 0.5 # how close we can get to an obstacle/person
@@ -30,14 +30,6 @@ class Vector:
         other_d = other.dist2stall(other.stall)
         return (self_d + self.dist) < (other_d + other.dist)
     
-    def out_of_obstacle(self, obstacle) -> bool:
-        """Whether the vector is outside of the obstacle."""
-        if abs(self.x - obstacle.x)<=1:
-            return abs(self.y - obstacle.y)>1+DANGER_ZONE
-        if abs(self.y - obstacle.y)<=1:
-            return abs(self.x - obstacle.x)>1+DANGER_ZONE
-        return self.dist2stall(obstacle) > DANGER_ZONE
-
     def dist2stall(self, stall):
         """Shortest distance to a corner of the stall"""
         return min(self.dist2(Vector(stall.x+1, stall.y+1)), self.dist2(Vector(stall.x-1, stall.y+1)), self.dist2(Vector(stall.x-1, stall.y-1)), self.dist2(Vector(stall.x+1, stall.y-1)))
@@ -151,6 +143,7 @@ class Player:
 
         self.dir = self.pos.normalized_dir(self.__next_stall()) # unit vector representing direction of movement
         self.phase1done = False 
+        self.just_finished = False
     
     def __randunit(self):
         """A random unit vector."""
@@ -205,14 +198,10 @@ class Player:
                 newvec =  Vector(vector.x+d.x, vector.y+d.y, vector, stall, vector.dist + 1)
                 fruitful = (newvec.dist2stall(stall) < 1)
                 if newvec.x>0 and newvec.x<WALL_BOUNDARY and \
-                    newvec.y>0 and newvec.y<WALL_BOUNDARY:
-                        if fruitful:
-                            if all(newvec.out_of_obstacle(obstacle) for obstacle in self.obstacles_known) and \
-                                all(newvec.dist2(player) > DANGER_ZONE for player in self.players_cached):
-                                newvecs.append(newvec)
-                        elif all(newvec.dist2(obstacle) > DANGER_ZONE+1.75 for obstacle in self.obstacles_known) and \
-                            all(newvec.dist2(player) > 2*DANGER_ZONE+1 for player in self.players_cached):
-                            newvecs.append(newvec)
+                    newvec.y>0 and newvec.y<WALL_BOUNDARY and \
+                    all(newvec.dist2(obstacle) > DANGER_ZONE+1.75 for obstacle in self.obstacles_known) and \
+                    all(newvec.dist2(player) > (DANGER_ZONE if fruitful else 2*DANGER_ZONE+2.5) for player in self.players_cached):
+                    newvecs.append(newvec)
             return newvecs
         
         #get the path of vectors chosen by a* search
@@ -270,7 +259,7 @@ class Player:
 
         # update other players
         self.players_cached = [Vector(p[1],p[2]) for p in other_players]
-        player_nearby = any(self.pos.dist2(player) < HORIZON/2 for player in self.players_cached)
+        player_nearby = any(self.pos.dist2(player) < HORIZON/1.5 for player in self.players_cached)
 
         # update obstacles
         new_obstacle_observed = False
@@ -291,7 +280,7 @@ class Player:
     def encounter_obstacle(self):
         # theoretically, we would never encounter an obstacle
         print("Warning: Encountered an obstacle.")
-        self.preprev_pos.update_val(self.prev_pos)
+        # self.preprev_pos.update_val(self.prev_pos)
         self.prev_pos.update_val(self.pos)
         self.should_lookup = True
 
@@ -304,6 +293,29 @@ class Player:
         self.t_since_lkp += 1
 
         if len(self.stalls_next) == 0:
+            if not self.just_finished:
+                self.just_finished = True
+                if pos_x < 50 and pos_y < 50:
+                    if pos_x < pos_y:
+                        self.stalls_next.append(Vector(1, pos_y + random.random()*20))
+                    else:
+                        self.stalls_next.append(Vector(pos_x + random.random()*20, 1))
+                elif pos_x < 50 and pos_y > 50:
+                    if pos_x < (100 - pos_y):
+                        self.stalls_next.append(Vector(1, pos_y + random.random()*20))
+                    else:
+                        self.stalls_next.append(Vector(pos_x + random.random()*20, 99))
+                elif pos_x > 50 and pos_y < 50:
+                    if (100 - pos_x) < pos_y:
+                        self.stalls_next.append(Vector(99, pos_y + random.random()*20))
+                    else:
+                        self.stalls_next.append(Vector(pos_x + random.random()*20, 1))
+                else:
+                    if (100 - pos_x) < (100 - pos_y):
+                        self.stalls_next.append(Vector(99, pos_y + random.random()*20))
+                    else:
+                        self.stalls_next.append(Vector(pos_x + random.random()*20, 99))
+                # self.stalls_next.append(Vector(1,1))
             self.dir = Vector(0,0)
             return 'move'
             # if self.phase1done:
@@ -317,15 +329,16 @@ class Player:
         if self.pos.dist2(self.prev_pos) < EPSILON or self.pos.dist2(self.preprev_pos) < 0.5: # if we are oscilating/not moving
             self.dir = self.__randunit()
             npos = self.pos + self.dir
-            while any(npos.dist2stall(obstacle) <= DANGER_ZONE for obstacle in self.obstacles_known) or any(npos.dist2(player) < DANGER_ZONE+2 for player in self.players_cached):
+            while any(npos.dist2stall(obstacle) <= DANGER_ZONE for obstacle in self.obstacles_known) or any(npos.dist2(player) < DANGER_ZONE for player in self.players_cached):
                 self.dir = self.__randunit()
                 npos = self.pos + self.dir
+                print("Warning: Oscilating/not moving.")
             self.should_lookup = True
             return 'move'
 
         if self.should_lookup \
             or self.pos.dist2(self.pos_last_lkp) >= (HORIZON-2* DANGER_ZONE)/2 \
-            or any(self.pos.dist2(player) <= 2*(DANGER_ZONE+1) + self.t_since_lkp for player in self.players_cached):
+            or any(self.pos.dist2(player) <= 2*(DANGER_ZONE+2.5) + self.t_since_lkp for player in self.players_cached):
             self.pos_last_lkp.update_val(self.pos)
             return 'lookup move'
         
