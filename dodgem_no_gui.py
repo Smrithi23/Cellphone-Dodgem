@@ -7,8 +7,6 @@ import os
 import shutil
 import Pmw
 import fast_tsp
-import sys
-import multiprocessing
 
 import constants
 from players.default_player import Player as DefaultPlayer
@@ -97,7 +95,6 @@ class DodgemGame():
         self.result_log = os.path.join("logs", "result.txt")
         self.score_log = os.path.join("logs", "score.txt")
         self.tsp_log = os.path.join("logs", "tsp.txt")
-        self.game_config_log = os.path.join("logs", "game_config.txt")
 
         self.canvas_scale = int(math.floor(float(args.scale)))
         self.canvas_height = 100 * self.canvas_scale
@@ -115,15 +112,6 @@ class DodgemGame():
         with open(self.tsp_log, 'w') as f:
             f.write("Travelling Salesman Path\n")
 
-#         with open(self.game_config_log, 'w') as f:
-#             f.write("\nGame Configuration\n")
-#             f.write("Total Number of Stalls: " + str(self.no_of_stalls) + "\n\
-# Number of Stalls to Visit: " + str(self.no_to_visit) + "\n\
-# Number of Obstacles: " + str(self.no_of_stalls - self.no_to_visit) + "\n\
-# Players: " + str(args.players) + "\n\
-# Theta: " + str(self.theta) + "\n\
-# Total Time: " + str(self.T) + "\n\n")
-
         self.turn_no = 1
         self.turn_comp = None
 
@@ -136,7 +124,7 @@ class DodgemGame():
             self.T, self.tsp_path = 10000, []
 
         # handle edge case
-        if self.T < 0:
+        if self.T <= 0:
             self.T = 1000
 
         with open(self.tsp_log, 'a') as f:
@@ -146,15 +134,6 @@ class DodgemGame():
 
         if int(args.total_time) > 0:
             self.T = int(args.total_time)
-
-        with open(self.game_config_log, 'w') as f:
-            f.write("\nGame Configuration\n")
-            f.write("Total Number of Stalls: " + str(self.no_of_stalls) + "\n\
-Number of Stalls to Visit: " + str(self.no_to_visit) + "\n\
-Number of Obstacles: " + str(self.no_of_stalls - self.no_to_visit) + "\n\
-Players: " + str(args.players) + "\n\
-Theta: " + str(self.theta) + "\n\
-Total Time: " + str(self.T) + "\n\n")
 
         self._create_players(args.players)
         if self.gui:
@@ -638,9 +617,8 @@ Total Time: " + str(self.T) + "\n\n")
         return False
 
     def _play_game(self):
-        # if gui is set to false
+        # Check if game is over
         if not self.gui:
-            # check if game is over
             while self.iteration <= self.T:
                 if self.iteration == self.T:
                     self.game_state = "over"
@@ -661,8 +639,8 @@ Total Time: " + str(self.T) + "\n\n")
                                 len(self.stalls_to_visit))).ljust(int(1.2 * self.canvas_scale), " ") + str(round(score[3], 2)).ljust(int(1.5 * self.canvas_scale), " ") + "\n")
 
                     with open(self.result_log, 'a') as f:
-                        f.write("\n")
-
+                        f.write("Game Over!")
+                    return
 
                 self.iteration += 1
                 new_positions = []
@@ -671,11 +649,9 @@ Total Time: " + str(self.T) + "\n\n")
                 interrupt = []
                 logs = []
 
-                sys.stdout = open(os.devnull, 'w')
                 for index, player in enumerate(self.players):
                     # get player action
                     start_time = time.time()
-                    
                     action = player.get_action(
                         self.player_states[index].pos_x, self.player_states[index].pos_y)
                     pos_x, pos_y = self.player_states[index].pos_x, self.player_states[index].pos_y
@@ -849,7 +825,8 @@ Total Time: " + str(self.T) + "\n\n")
                     with open(self.score_log, 'a') as f:
                         f.write(str(index + 1).ljust(int(1.2 * self.canvas_scale), " ") + str(player_state.name).ljust(int(1 * self.canvas_scale), " ") + (str(player_state.items_obtained) + "/" + str(len(self.stalls_to_visit))).ljust(
                             int(1.2 * self.canvas_scale), " ") + str(player_state.interaction).ljust(int(1.5 * self.canvas_scale), " ") + str(round(player_state.satisfaction, 2)).ljust(int(1.5 * self.canvas_scale), " ") + "\n")
-                sys.stdout = sys.__stdout__
+
+                print(self.turn_no)
                 self.turn_no += 1
         else:
             if self.iteration == self.T:
@@ -879,6 +856,10 @@ Total Time: " + str(self.T) + "\n\n")
                     with open(self.result_log, 'a') as f:
                         f.write(str(score[0]).ljust(int(0.4 * self.canvas_scale), " ") + str(score[1]).ljust(int(1 * self.canvas_scale), " ") + (str(score[2]) + "/" + str(
                             len(self.stalls_to_visit))).ljust(int(1.2 * self.canvas_scale), " ") + str(round(score[3], 2)).ljust(int(1.5 * self.canvas_scale), " ") + "\n")
+
+                with open(self.result_log, 'a') as f:
+                    f.write("Game Over!")
+                return
 
             self.iteration += 1
             new_positions = []
@@ -1074,8 +1055,6 @@ Total Time: " + str(self.T) + "\n\n")
                 with open(self.score_log, 'a') as f:
                     f.write(str(index + 1).ljust(int(1.2 * self.canvas_scale), " ") + str(player_state.name).ljust(int(1 * self.canvas_scale), " ") + (str(player_state.items_obtained) + "/" + str(len(self.stalls_to_visit))).ljust(
                         int(1.2 * self.canvas_scale), " ") + str(player_state.interaction).ljust(int(1.5 * self.canvas_scale), " ") + str(round(player_state.satisfaction, 2)).ljust(int(1.5 * self.canvas_scale), " ") + "\n")
-            self.turn_no += 1
 
-            # Next turn after 100 ms
-            if self.game_state == "resume":
-                self.root.after(100, self._play_game)
+            print(self.turn_no)
+            self.turn_no += 1
